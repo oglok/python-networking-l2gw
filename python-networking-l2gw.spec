@@ -1,5 +1,6 @@
 %global pypi_name networking-l2gw
 %global sname networking_l2gw
+%global servicename neutron-l2gw
 %{!?upstream_version: %global upstream_version %{version}%{?milestone}}
 
 Name:           python-%{pypi_name}
@@ -10,6 +11,7 @@ Summary:        API's and implementations to support L2 Gateways in Neutron
 License:        ASL 2.0
 URL:            http://www.openstack.org/
 Source0:        https://files.pythonhosted.org/packages/source/n/%{pypi_name}/%{pypi_name}-%{upstream_version}.tar.gz
+Source1:        %{servicename}-agent.service
 BuildArch:      noarch
  
 BuildRequires:  python-coverage
@@ -26,6 +28,7 @@ BuildRequires:  python-testscenarios
 BuildRequires:  python-testtools
 BuildRequires:  python2-devel
 BuildRequires:  python-sphinx
+BuildRequires:  systemd-units
 
 %description
 This project proposes a Neutron API extension that can be used to express and
@@ -82,13 +85,26 @@ mkdir -p %{buildroot}%{_sysconfdir}/neutron/
 mv %{buildroot}/usr/etc/neutron/l2gateway_agent.ini %{buildroot}%{_sysconfdir}/neutron/
 mv %{buildroot}/usr/etc/neutron/l2gw_plugin.ini %{buildroot}%{_sysconfdir}/neutron/
 
+# Install systemd units
+install -p -D -m 644 %{SOURCE1} %{buildroot}%{_unitdir}/%{servicename}-agent.service
+
+%post
+%systemd_post %{servicename}-agent.service
+
+%preun
+%systemd_preun %{servicename}-agent.service
+
+%postun
+%systemd_postun_with_restart %{servicename}-agent.service
+
 %files -n python2-%{pypi_name}
 %license LICENSE
 %{python2_sitelib}/%{sname}
 %{python2_sitelib}/%{sname}-*.egg-info
-%{_sysconfdir}/neutron/l2gateway_agent.ini
-%{_sysconfdir}/neutron/l2gw_plugin.ini
-%{_bindir}/neutron-l2gateway-agent
+%{_unitdir}/%{servicename}-agent.service
+%config(noreplace) %attr(0640, root, neutron) %{_sysconfdir}/neutron/l2gateway_agent.ini
+%config(noreplace) %attr(0640, root, neutron) %{_sysconfdir}/neutron/l2gw_plugin.ini
+%config(noreplace) %attr(0640, root, neutron) %{_bindir}/neutron-l2gateway-agent
 %exclude %{python2_sitelib}/%{sname}/tests                                                                                                                                                                
 
 %files -n python-%{pypi_name}-doc
